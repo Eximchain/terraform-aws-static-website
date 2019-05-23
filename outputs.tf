@@ -11,5 +11,5 @@ output "website_dns" {
 }
 
 output "redirect_dns" {
-    value = "${aws_route53_record.redirect.fqdn}"
+    value = "${element(coalescelist(aws_route53_record.redirect.*.fqdn, list("")), 0)}"
 }

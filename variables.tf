@@ -9,16 +9,8 @@ variable "domain_root" {
     description = "The root domain hosting this, which must correspond to a public Hosted Zone name"
 }
 
-variable "redirect_dns_name" {
-    description = "The DNS name to redirect to the website"
-}
-
 variable "website_bucket_name" {
     description = "Name of the bucket in which to host the static website"
-}
-
-variable "redirect_bucket_name" {
-    description = "Name of the bucket to host the redirect"
 }
 
 variable "log_bucket_name" {
@@ -36,4 +28,14 @@ variable "aws_region" {
 variable "force_destroy_buckets" {
     description = "Set to true to force destroy buckets on terraform destroy"
     default     = false
+}
+
+variable "redirect_dns_name" {
+    description = "The DNS name to redirect to the website"
+    default     = ""
+}
+
+variable "redirect_bucket_name" {
+    description = "Name of the bucket to host the redirect"
+    default     = ""
 }

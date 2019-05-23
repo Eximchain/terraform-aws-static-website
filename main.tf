@@ -13,7 +13,8 @@ data "aws_caller_identity" "current" {}
 # LOCALS
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-    cloudfront_origin_id      = "S3-${var.dns_name}"
+    cloudfront_origin_id = "S3-${var.dns_name}"
+    create_redirect      = "${var.redirect_bucket_name != "" && var.redirect_dns_name != ""}"
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -34,6 +35,8 @@ data "aws_iam_policy_document" "public_access_website" {
 }
 
 data "aws_iam_policy_document" "public_access_redirect" {
+    count = "${local.create_redirect ? 1 : 0}"
+
     statement {
         sid       = "PublicReadGetObject"
         effect    = "Allow"
@@ -96,6 +99,8 @@ resource "aws_s3_bucket_policy" "website_content" {
 # REDIRECT S3 BUCKET
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_s3_bucket" "redirect" {
+    count = "${local.create_redirect ? 1 : 0}"
+
     bucket = "${var.redirect_bucket_name}"
     acl    = "public-read"
 
@@ -107,6 +112,8 @@ resource "aws_s3_bucket" "redirect" {
 }
 
 resource "aws_s3_bucket_policy" "redirect" {
+    count = "${local.create_redirect ? 1 : 0}"
+
     bucket = "${aws_s3_bucket.redirect.bucket}"
     policy = "${data.aws_iam_policy_document.public_access_redirect.json}"
 }
@@ -141,7 +148,7 @@ data "aws_acm_certificate" "ssl_certificate" {
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_cloudfront_distribution" "website_distribution" {
     enabled = true
-    aliases = ["${var.dns_name}", "${var.redirect_dns_name}"]
+    aliases = "${split(",", local.create_redirect ? join(",", list(var.dns_name, var.redirect_dns_name)) : var.dns_name)}"
 
     default_root_object = "index.html"
     is_ipv6_enabled     = true
@@ -231,6 +238,8 @@ resource "aws_route53_record" "website" {
 }
 
 resource "aws_route53_record" "redirect" {
+    count = "${local.create_redirect ? 1 : 0}"
+
     zone_id = "${data.aws_route53_zone.domain.zone_id}"
     name    = "${var.redirect_dns_name}"
     type    = "A"
