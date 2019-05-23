@@ -74,6 +74,8 @@ resource "aws_s3_bucket" "website_content" {
     bucket = "${var.website_bucket_name}"
     acl    = "public-read"
 
+    force_destroy = "${var.force_destroy_buckets}"
+
     website {
         index_document = "index.html"
         error_document = "index.html"
@@ -97,6 +99,8 @@ resource "aws_s3_bucket" "redirect" {
     bucket = "${var.redirect_bucket_name}"
     acl    = "public-read"
 
+    force_destroy = "${var.force_destroy_buckets}"
+
     website {
         redirect_all_requests_to = "http://${aws_s3_bucket.website_content.bucket}"
     }
@@ -113,6 +117,8 @@ resource "aws_s3_bucket_policy" "redirect" {
 resource "aws_s3_bucket" "logs" {
     bucket = "${var.log_bucket_name}"
     acl    = "log-delivery-write"
+
+    force_destroy = "${var.force_destroy_buckets}"
 }
 
 resource "aws_s3_bucket_policy" "ses_email_permission" {
@@ -241,8 +247,9 @@ resource "aws_route53_record" "redirect" {
 # WEBSITE CONTENT
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_s3_bucket_object" "index" {
-  bucket  = "${aws_s3_bucket.website_content.id}"
-  key     = "index.html"
-  content = "Hello, World!"
-  //source = "path/to/file"
+  bucket = "${aws_s3_bucket.website_content.id}"
+  key    = "index.html"
+  source = "${path.module}/loading.html"
+
+  content_type = "text/html"
 }

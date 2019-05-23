@@ -32,3 +32,8 @@ variable "aws_region" {
     description = "AWS Region to use"
     default     = "us-east-1"
 }
+
+variable "force_destroy_buckets" {
+    description = "Set to true to force destroy buckets on terraform destroy"
+    default     = false
+}
