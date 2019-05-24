@@ -127,10 +127,14 @@ resource "aws_acm_certificate_validation" "ssl_certificate" {
 
     certificate_arn         = "${element(coalescelist(aws_acm_certificate.ssl_certificate.*.arn, list("")), 0)}"
     validation_record_fqdns = ["${aws_route53_record.cert_validation.*.fqdn}"]
+
+    provisioner "local-exec" {
+        command = "sleep 20"
+    }
 }
 
 resource "aws_route53_record" "cert_validation" {
-    count = "${local.provision_acm_cert ? length(element(coalescelist(aws_acm_certificate.ssl_certificate.*.domain_validation_options, list("")), 0)) : 0}"
+    count = "${local.provision_acm_cert ? length(local.all_aliases) : 0}"
 
     name    = "${lookup(aws_acm_certificate.ssl_certificate.domain_validation_options[count.index], "resource_record_name")}"
     type    = "${lookup(aws_acm_certificate.ssl_certificate.domain_validation_options[count.index], "resource_record_type")}"
@@ -206,6 +210,8 @@ resource "aws_cloudfront_distribution" "website_distribution" {
         acm_certificate_arn = "${element(coalescelist(data.aws_acm_certificate.ssl_certificate.*.arn, aws_acm_certificate.ssl_certificate.*.arn), 0)}"
         ssl_support_method  = "sni-only"
     }
+
+    depends_on = ["aws_acm_certificate_validation.ssl_certificate"]
 }
 
 resource "aws_cloudfront_origin_access_identity" "website" {
