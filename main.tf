@@ -257,18 +257,7 @@ resource "aws_route53_record" "redirect" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# WEBSITE CONTENT
-# ---------------------------------------------------------------------------------------------------------------------
-resource "aws_s3_bucket_object" "index" {
-    bucket = "${aws_s3_bucket.website_content.id}"
-    key    = "index.html"
-    source = "${path.module}/loading.html"
-
-    content_type = "text/html"
-}
-
-# ---------------------------------------------------------------------------------------------------------------------
-# DEPLOY PIPLELINE AND BUILD
+# DEPLOY PIPLELINE
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_codepipeline" "deploy_pipeline" {
     name     = "static-website-${replace(var.dns_name, ".", "-")}"
@@ -323,4 +312,77 @@ resource "aws_s3_bucket" "deploy_artifacts" {
     acl    = "public-read"
 
     force_destroy = "${var.force_destroy_buckets}"
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CODEPIPELINE IAM ROLE
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_iam_role" "website_deploy_codepipeline_iam" {
+  name = "static-website-${var.dns_name}"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "codepipeline.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CODEPIPELINE IAM ACCESS
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_iam_policy" "codepipeline" {
+  name = "static-website-codepipeline-${var.dns_name}"
+
+  policy = "${data.aws_iam_policy_document.codepipeline.json}"
+}
+
+resource "aws_iam_role_policy_attachment" "codepipeline" {
+  role       = "${aws_iam_role.website_deploy_codepipeline_iam.id}"
+  policy_arn = "${aws_iam_policy.codepipeline.arn}"
+}
+
+data "aws_iam_policy_document" "codepipeline" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "S3Access"
+
+    effect = "Allow"
+
+    actions = [
+      "s3:*"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.website_content.arn}",
+      "${aws_s3_bucket.website_content.arn}/*",
+      "${aws_s3_bucket.deploy_artifacts.arn}",
+      "${aws_s3_bucket.deploy_artifacts.arn}/*"
+    ]
+  }
+
+  statement {
+    sid = "CloudWatchLogsPolicy"
+
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    
+    resources = [
+      "*"
+    ]
+  }
 }
