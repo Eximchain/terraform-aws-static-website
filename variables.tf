@@ -57,3 +57,8 @@ variable "acm_cert_domain" {
     description = "The Domain of an ACM certificate that is valid for all domains the site will be hosted at. Will provision one if not provided."
     default     = ""
 }
+
+variable "pretty_project_description" {
+    description = "A pretty, human-readable name for the project to be used in comments"
+    default     = "static website"
+}

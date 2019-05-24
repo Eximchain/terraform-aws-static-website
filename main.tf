@@ -153,7 +153,7 @@ resource "aws_cloudfront_distribution" "website_distribution" {
     default_root_object = "index.html"
     is_ipv6_enabled     = true
 
-    comment = "CloudFront distribution for static website"
+    comment = "CloudFront distribution for ${var.pretty_project_description}"
 
     origin {
         domain_name = "${aws_s3_bucket.website_content.bucket_domain_name}"
@@ -215,7 +215,7 @@ resource "aws_cloudfront_distribution" "website_distribution" {
 }
 
 resource "aws_cloudfront_origin_access_identity" "website" {
-    comment = "Origin Access Identity for static website Cloudfront Distribution"
+    comment = "Origin Access Identity for ${var.pretty_project_description} Cloudfront Distribution"
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
