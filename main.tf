@@ -272,10 +272,9 @@ resource "aws_codepipeline" "deploy_pipeline" {
             output_artifacts = ["source_output"]
 
             configuration = {
-                Owner      = "${var.github_owner}"
-                Repo       = "${var.github_website_repo}"
-                Branch     = "${var.github_website_branch}"
-                OAuthToken = "${var.github_token}"
+                Owner  = "${var.github_owner}"
+                Repo   = "${var.github_website_repo}"
+                Branch = "${var.github_website_branch}"
             }
         }
     }

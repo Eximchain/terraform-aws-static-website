@@ -25,10 +25,6 @@ variable "github_website_branch" {
     description = "Name of the branch with the static website on it"
 }
 
-variable "github_token" {
-    description = "A token with read permission on the specified repo"
-}
-
 # --------------------------------------------------------
 # OPTIONAL VARIABLES
 # --------------------------------------------------------
