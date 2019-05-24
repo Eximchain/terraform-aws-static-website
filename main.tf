@@ -89,13 +89,13 @@ resource "aws_s3_bucket" "website_content" {
     }
 
     logging {
-        target_bucket = "${aws_s3_bucket.logs.bucket}"
+        target_bucket = "${aws_s3_bucket.logs.id}"
         target_prefix = "root/"
     }
 }
 
 resource "aws_s3_bucket_policy" "website_content" {
-    bucket = "${aws_s3_bucket.website_content.bucket}"
+    bucket = "${aws_s3_bucket.website_content.id}"
     policy = "${data.aws_iam_policy_document.public_access_website.json}"
 }
 
@@ -118,7 +118,7 @@ resource "aws_s3_bucket" "redirect" {
 resource "aws_s3_bucket_policy" "redirect" {
     count = "${local.create_redirect ? 1 : 0}"
 
-    bucket = "${aws_s3_bucket.redirect.bucket}"
+    bucket = "${aws_s3_bucket.redirect.id}"
     policy = "${data.aws_iam_policy_document.public_access_redirect.json}"
 }
 
@@ -133,7 +133,7 @@ resource "aws_s3_bucket" "logs" {
 }
 
 resource "aws_s3_bucket_policy" "ses_email_permission" {
-    bucket = "${aws_s3_bucket.logs.bucket}"
+    bucket = "${aws_s3_bucket.logs.id}"
     policy = "${data.aws_iam_policy_document.ses_email_permission.json}"
 }
 
@@ -265,4 +265,62 @@ resource "aws_s3_bucket_object" "index" {
     source = "${path.module}/loading.html"
 
     content_type = "text/html"
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# DEPLOY PIPLELINE AND BUILD
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_codepipeline" "deploy_pipeline" {
+    name     = "static-website-${replace(var.dns_name, ".", "-")}"
+    role_arn = "${aws_iam_role.website_deploy_codepipeline_iam.arn}"
+
+    artifact_store {
+        location = "${aws_s3_bucket.deploy_artifacts.id}"
+        type     = "S3"
+    }
+
+    stage {
+        name = "Source"
+
+        action {
+            name             = "Source"
+            category         = "Source"
+            owner            = "ThirdParty"
+            provider         = "GitHub"
+            version          = "1"
+            output_artifacts = ["source_output"]
+
+            configuration = {
+                Owner      = "${var.github_owner}"
+                Repo       = "${var.github_website_repo}"
+                Branch     = "${var.github_website_branch}"
+                OAuthToken = "${var.github_token}"
+            }
+        }
+    }
+
+    stage {
+        name = "Deploy"
+
+        action {
+            name             = "Deploy"
+            category         = "Deploy"
+            owner            = "AWS"
+            provider         = "S3"
+            input_artifacts  = ["source_output"]
+            version          = "1"
+
+            configuration {
+                BucketName = "${aws_s3_bucket.website_content.id}"
+                Extract    = "true"
+            }
+        }
+    }
+}
+
+resource "aws_s3_bucket" "deploy_artifacts" {
+    bucket = "static-website-artifacts-${replace(var.dns_name, ".", "-")}"
+    acl    = "public-read"
+
+    force_destroy = "${var.force_destroy_buckets}"
 }

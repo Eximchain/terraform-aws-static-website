@@ -17,6 +17,18 @@ variable "log_bucket_name" {
     description = "Name of the bucket to hold logs for the website"
 }
 
+variable "github_website_repo" {
+    description = "Name of the repo with the static website on it"
+}
+
+variable "github_website_branch" {
+    description = "Name of the branch with the static website on it"
+}
+
+variable "github_token" {
+    description = "A token with read permission on the specified repo"
+}
+
 # --------------------------------------------------------
 # OPTIONAL VARIABLES
 # --------------------------------------------------------
@@ -38,4 +50,9 @@ variable "redirect_dns_name" {
 variable "redirect_bucket_name" {
     description = "Name of the bucket to host the redirect"
     default     = ""
+}
+
+variable "github_owner" {
+    description = "Owner the repository with the static website belongs to"
+    default     = "Eximchain"
 }
