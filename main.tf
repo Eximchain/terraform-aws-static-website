@@ -19,7 +19,9 @@ data "aws_caller_identity" "current" {}
 locals {
     cloudfront_origin_id = "S3-${var.dns_name}"
     create_redirect      = "${var.redirect_dns_name != ""}"
-    cloudfront_aliases   = "${split(",", local.create_redirect ? join(",", list(var.dns_name, var.redirect_dns_name)) : var.dns_name)}"
+    all_aliases          = "${split(",", local.create_redirect ? join(",", list(var.dns_name, var.redirect_dns_name)) : var.dns_name)}"
+    alternate_aliases    = "${compact(split(",", local.create_redirect ? var.redirect_dns_name : ""))}"
+    provision_acm_cert   = "${var.acm_cert_domain == ""}"
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -102,11 +104,39 @@ resource "aws_s3_bucket_policy" "ses_email_permission" {
 # ---------------------------------------------------------------------------------------------------------------------
 # SSL CERTIFICATE
 # ---------------------------------------------------------------------------------------------------------------------
+# For loading existing cert
 data "aws_acm_certificate" "ssl_certificate" {
-    # Currently hand-managed
-    domain      = "${var.dns_name}"
+    count = "${local.provision_acm_cert ? 0 : 1}"
+
+    domain      = "${var.acm_cert_domain}"
     types       = ["AMAZON_ISSUED"]
     most_recent = true
+}
+
+# For provisioning new cert
+resource "aws_acm_certificate" "ssl_certificate" {
+    count = "${local.provision_acm_cert ? 1 : 0}"
+
+    domain_name               = "${var.domain_root}"
+    subject_alternative_names = "${local.alternate_aliases}"
+    validation_method         = "DNS"
+}
+
+resource "aws_acm_certificate_validation" "ssl_certificate" {
+    count = "${local.provision_acm_cert ? 1 : 0}"
+
+    certificate_arn         = "${aws_acm_certificate.ssl_certificate.arn}"
+    validation_record_fqdns = ["${aws_route53_record.cert_validation.*.fqdn}"]
+}
+
+resource "aws_route53_record" "cert_validation" {
+    count = "${local.provision_acm_cert ? length(aws_acm_certificate.ssl_certificate.domain_validation_options) : 0}"
+
+    name    = "${lookup(aws_acm_certificate.ssl_certificate.domain_validation_options[count.index], "resource_record_name")}"
+    type    = "${lookup(aws_acm_certificate.ssl_certificate.domain_validation_options[count.index], "resource_record_type")}"
+    zone_id = "${data.aws_route53_zone.domain.zone_id}"
+    records = ["${lookup(aws_acm_certificate.ssl_certificate.domain_validation_options[count.index], "resource_record_value")}"]
+    ttl     = 60
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -114,7 +144,7 @@ data "aws_acm_certificate" "ssl_certificate" {
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_cloudfront_distribution" "website_distribution" {
     enabled = true
-    aliases = "${local.cloudfront_aliases}"
+    aliases = "${local.all_aliases}"
 
     default_root_object = "index.html"
     is_ipv6_enabled     = true
@@ -173,7 +203,7 @@ resource "aws_cloudfront_distribution" "website_distribution" {
     }
 
     viewer_certificate {
-        acm_certificate_arn = "${data.aws_acm_certificate.ssl_certificate.arn}"
+        acm_certificate_arn = "${element(coalescelist(data.aws_acm_certificate.ssl_certificate.*.arn, aws_acm_certificate.ssl_certificate.*.arn), 0)}"
         ssl_support_method  = "sni-only"
     }
 }

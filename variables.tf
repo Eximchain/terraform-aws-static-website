@@ -56,3 +56,8 @@ variable "github_owner" {
     description = "Owner the repository with the static website belongs to"
     default     = "Eximchain"
 }
+
+variable "acm_cert_domain" {
+    description = "The Domain of an ACM certificate that is valid for all domains the site will be hosted at. Will provision one if not provided."
+    default     = ""
+}
