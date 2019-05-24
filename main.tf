@@ -125,12 +125,12 @@ resource "aws_acm_certificate" "ssl_certificate" {
 resource "aws_acm_certificate_validation" "ssl_certificate" {
     count = "${local.provision_acm_cert ? 1 : 0}"
 
-    certificate_arn         = "${aws_acm_certificate.ssl_certificate.arn}"
+    certificate_arn         = "${element(coalescelist(aws_acm_certificate.ssl_certificate.*.arn, list("")), 0)}"
     validation_record_fqdns = ["${aws_route53_record.cert_validation.*.fqdn}"]
 }
 
 resource "aws_route53_record" "cert_validation" {
-    count = "${local.provision_acm_cert ? length(aws_acm_certificate.ssl_certificate.domain_validation_options) : 0}"
+    count = "${local.provision_acm_cert ? length(element(coalescelist(aws_acm_certificate.ssl_certificate.*.domain_validation_options, list("")), 0)) : 0}"
 
     name    = "${lookup(aws_acm_certificate.ssl_certificate.domain_validation_options[count.index], "resource_record_name")}"
     type    = "${lookup(aws_acm_certificate.ssl_certificate.domain_validation_options[count.index], "resource_record_type")}"
@@ -296,6 +296,8 @@ resource "aws_codepipeline" "deploy_pipeline" {
             }
         }
     }
+
+    depends_on = ["aws_iam_role_policy_attachment.codepipeline"]
 }
 
 resource "aws_s3_bucket" "deploy_artifacts" {
