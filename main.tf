@@ -7,6 +7,10 @@ provider "aws" {
     region  = "${var.aws_region}"
 }
 
+provider "local" {
+    version = "~> 1.2"
+}
+
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -220,8 +224,8 @@ resource "aws_cloudfront_origin_access_identity" "website" {
 # DNS RECORDS
 # ---------------------------------------------------------------------------------------------------------------------
 data "aws_route53_zone" "domain" {
-  name         = "${var.domain_root}"
-  private_zone = false
+    name         = "${var.domain_root}"
+    private_zone = false
 }
 
 resource "aws_route53_record" "website" {
@@ -256,9 +260,9 @@ resource "aws_route53_record" "redirect" {
 # WEBSITE CONTENT
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_s3_bucket_object" "index" {
-  bucket = "${aws_s3_bucket.website_content.id}"
-  key    = "index.html"
-  source = "${path.module}/loading.html"
+    bucket = "${aws_s3_bucket.website_content.id}"
+    key    = "index.html"
+    source = "${path.module}/loading.html"
 
-  content_type = "text/html"
+    content_type = "text/html"
 }
