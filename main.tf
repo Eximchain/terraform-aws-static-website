@@ -469,4 +469,9 @@ resource "aws_codebuild_project" "static_website_builder" {
 
 data "template_file" "buildspec" {
     template = "${file("${path.module}/buildspec.yml")}"
+
+    vars {
+        deployment_directory = "${var.deployment_directory}"
+        build_command        = "${var.build_command}"
+    }
 }

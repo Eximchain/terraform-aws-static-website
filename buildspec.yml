@@ -5,9 +5,9 @@ phases:
       nodejs: 10
   build:
     commands:
-      - ls
+      - "${build_command}"
 artifacts:
   name: BUILD
-  base-directory: build
+  base-directory: ${deployment_directory}
   files:
     - '**/*'

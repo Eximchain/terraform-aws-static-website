@@ -62,3 +62,13 @@ variable "pretty_project_description" {
     description = "A pretty, human-readable name for the project to be used in comments"
     default     = "static website"
 }
+
+variable "deployment_directory" {
+    description = "The directory in the repository in which the artifacts to deploy can be found"
+    default     = "./"
+}
+
+variable "build_command" {
+    description = "The command to use to build the Website, if you want the pipeline to build it (e.g. 'npm run build').  If not specified, the pipeline will assume the static bundle is already built."
+    default     = ":"
+}
