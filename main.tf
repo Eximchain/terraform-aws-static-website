@@ -11,6 +11,10 @@ provider "local" {
     version = "~> 1.2"
 }
 
+provider "template" {
+    version = "~> 2.1"
+}
+
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -459,10 +463,10 @@ resource "aws_codebuild_project" "static_website_builder" {
 
     source {
         type = "CODEPIPELINE"
-        buildspec = "${data.local_file.buildspec.content}"
+        buildspec = "${data.template_file.buildspec.rendered}"
     }
 }
 
-data "local_file" "buildspec" {
-    filename = "${path.module}/buildspec.yml"
+data "template_file" "buildspec" {
+    template = "${file("${path.module}/buildspec.yml")}"
 }
