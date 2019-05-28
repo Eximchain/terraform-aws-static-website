@@ -22,6 +22,7 @@ locals {
     all_aliases          = "${split(",", local.create_redirect ? join(",", list(var.dns_name, var.redirect_dns_name)) : var.dns_name)}"
     alternate_aliases    = "${compact(split(",", local.create_redirect ? var.redirect_dns_name : ""))}"
     provision_acm_cert   = "${var.acm_cert_domain == ""}"
+    hyphenated_dns_name  = "${replace(var.dns_name, ".", "-")}"
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -258,7 +259,7 @@ resource "aws_route53_record" "redirect" {
 # DEPLOY PIPLELINE
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_codepipeline" "deploy_pipeline" {
-    name     = "static-website-${replace(var.dns_name, ".", "-")}"
+    name     = "static-website-${local.hyphenated_dns_name}"
     role_arn = "${aws_iam_role.website_deploy_codepipeline_iam.arn}"
 
     artifact_store {
@@ -286,6 +287,24 @@ resource "aws_codepipeline" "deploy_pipeline" {
     }
 
     stage {
+        name = "Build"
+
+        action {
+            name             = "Build"
+            category         = "Build"
+            owner            = "AWS"
+            provider         = "CodeBuild"
+            input_artifacts  = ["source_output"]
+            output_artifacts = ["build_output"]
+            version          = "1"
+
+            configuration = {
+                ProjectName = "${aws_codebuild_project.static_website_builder.name}"
+            }
+        }
+    }
+
+    stage {
         name = "Deploy"
 
         action {
@@ -293,7 +312,7 @@ resource "aws_codepipeline" "deploy_pipeline" {
             category         = "Deploy"
             owner            = "AWS"
             provider         = "S3"
-            input_artifacts  = ["source_output"]
+            input_artifacts  = ["build_output"]
             version          = "1"
 
             configuration {
@@ -327,6 +346,13 @@ resource "aws_iam_role" "website_deploy_codepipeline_iam" {
       "Effect": "Allow",
       "Principal": {
         "Service": "codepipeline.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "codebuild.amazonaws.com"
       },
       "Action": "sts:AssumeRole"
     }
@@ -384,4 +410,65 @@ data "aws_iam_policy_document" "codepipeline" {
       "*"
     ]
   }
+
+  statement {
+    sid = "CodeBuildStart"
+
+    effect = "Allow"
+
+    actions = [
+      "codebuild:BatchGetBuilds",
+      "codebuild:StartBuild"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "LambdaInvoke"
+
+    effect = "Allow"
+
+    actions = [
+      "lambda:InvokeFunction"
+    ]
+
+    // A known issue with the Lambda IAM permissions system makes it impossible
+    // to grant more granular permissions.  lambda:InvokeFunction cannot be called
+    // on specific functions, and lambda:Invoke is not recognized as a valid policy.
+    // Given that only our Lambda can create the CodePipeline which has this role,
+    // I think it ought to be fine.  Frustrating, though.  - John
+    //
+    // https://stackoverflow.com/q/48031334/2128308
+    resources = ["*"]
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CODEBUILD PROJECT
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_codebuild_project" "static_website_builder" {
+  name          = "static-website-${local.hyphenated_dns_name}"
+  build_timeout = 10
+  service_role  = "${aws_iam_role.website_deploy_codepipeline_iam.arn}"
+
+  environment {
+    type                        = "LINUX_CONTAINER"
+    compute_type                = "BUILD_GENERAL1_SMALL"
+    image                       = "aws/codebuild/standard:2.0"
+  }
+
+  artifacts {
+    type = "CODEPIPELINE"
+    encryption_disabled = true
+  }
+
+  source {
+    type = "CODEPIPELINE"
+    buildspec = "${data.local_file.buildspec.content}"
+  }
+}
+
+data "local_file" "buildspec" {
+  filename = "${path.module}/buildspec.yml"
 }
