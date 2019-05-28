@@ -336,27 +336,27 @@ resource "aws_s3_bucket" "deploy_artifacts" {
 # CODEPIPELINE IAM ROLE
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_iam_role" "website_deploy_codepipeline_iam" {
-  name = "static-website-${var.dns_name}"
+    name = "static-website-${var.dns_name}"
 
-  assume_role_policy = <<EOF
+    assume_role_policy = <<EOF
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "codepipeline.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    },
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "codebuild.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "codepipeline.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        },
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "codebuild.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
 }
 EOF
 }
@@ -365,110 +365,104 @@ EOF
 # CODEPIPELINE IAM ACCESS
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_iam_policy" "codepipeline" {
-  name = "static-website-codepipeline-${var.dns_name}"
+    name = "static-website-codepipeline-${var.dns_name}"
 
-  policy = "${data.aws_iam_policy_document.codepipeline.json}"
+    policy = "${data.aws_iam_policy_document.codepipeline.json}"
 }
 
 resource "aws_iam_role_policy_attachment" "codepipeline" {
-  role       = "${aws_iam_role.website_deploy_codepipeline_iam.id}"
-  policy_arn = "${aws_iam_policy.codepipeline.arn}"
+    role       = "${aws_iam_role.website_deploy_codepipeline_iam.id}"
+    policy_arn = "${aws_iam_policy.codepipeline.arn}"
 }
 
 data "aws_iam_policy_document" "codepipeline" {
-  version = "2012-10-17"
+    version = "2012-10-17"
 
-  statement {
-    sid = "S3Access"
+    statement {
+        sid = "S3Access"
 
-    effect = "Allow"
+        effect = "Allow"
 
-    actions = [
-      "s3:*"
-    ]
+        actions = ["s3:*"]
 
-    resources = [
-      "${aws_s3_bucket.website_content.arn}",
-      "${aws_s3_bucket.website_content.arn}/*",
-      "${aws_s3_bucket.deploy_artifacts.arn}",
-      "${aws_s3_bucket.deploy_artifacts.arn}/*"
-    ]
-  }
+        resources = [
+            "${aws_s3_bucket.website_content.arn}",
+            "${aws_s3_bucket.website_content.arn}/*",
+            "${aws_s3_bucket.deploy_artifacts.arn}",
+            "${aws_s3_bucket.deploy_artifacts.arn}/*"
+        ]
+    }
 
-  statement {
-    sid = "CloudWatchLogsPolicy"
+    statement {
+        sid = "CloudWatchLogsPolicy"
 
-    effect = "Allow"
+        effect = "Allow"
 
-    actions = [
-      "logs:CreateLogGroup",
-      "logs:CreateLogStream",
-      "logs:PutLogEvents"
-    ]
+        actions = [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+        ]
     
-    resources = [
-      "*"
-    ]
-  }
+        resources = ["*"]
+    }
 
-  statement {
-    sid = "CodeBuildStart"
+    statement {
+        sid = "CodeBuildStart"
 
-    effect = "Allow"
+        effect = "Allow"
 
-    actions = [
-      "codebuild:BatchGetBuilds",
-      "codebuild:StartBuild"
-    ]
+        actions = [
+            "codebuild:BatchGetBuilds",
+            "codebuild:StartBuild"
+        ]
 
-    resources = ["*"]
-  }
+        resources = ["*"]
+    }
 
-  statement {
-    sid = "LambdaInvoke"
+    statement {
+        sid = "LambdaInvoke"
 
-    effect = "Allow"
+        effect = "Allow"
 
-    actions = [
-      "lambda:InvokeFunction"
-    ]
+        actions = ["lambda:InvokeFunction"]
 
-    // A known issue with the Lambda IAM permissions system makes it impossible
-    // to grant more granular permissions.  lambda:InvokeFunction cannot be called
-    // on specific functions, and lambda:Invoke is not recognized as a valid policy.
-    // Given that only our Lambda can create the CodePipeline which has this role,
-    // I think it ought to be fine.  Frustrating, though.  - John
-    //
-    // https://stackoverflow.com/q/48031334/2128308
-    resources = ["*"]
-  }
+        // A known issue with the Lambda IAM permissions system makes it impossible
+        // to grant more granular permissions.  lambda:InvokeFunction cannot be called
+        // on specific functions, and lambda:Invoke is not recognized as a valid policy.
+        // Given that only our Lambda can create the CodePipeline which has this role,
+        // I think it ought to be fine.  Frustrating, though.  - John
+        //
+        // https://stackoverflow.com/q/48031334/2128308
+        resources = ["*"]
+    }
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # CODEBUILD PROJECT
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_codebuild_project" "static_website_builder" {
-  name          = "static-website-${local.hyphenated_dns_name}"
-  build_timeout = 10
-  service_role  = "${aws_iam_role.website_deploy_codepipeline_iam.arn}"
+    name          = "static-website-${local.hyphenated_dns_name}"
+    build_timeout = 10
+    service_role  = "${aws_iam_role.website_deploy_codepipeline_iam.arn}"
 
-  environment {
-    type                        = "LINUX_CONTAINER"
-    compute_type                = "BUILD_GENERAL1_SMALL"
-    image                       = "aws/codebuild/standard:2.0"
-  }
+    environment {
+        type                        = "LINUX_CONTAINER"
+        compute_type                = "BUILD_GENERAL1_SMALL"
+        image                       = "aws/codebuild/standard:2.0"
+    }
 
-  artifacts {
-    type = "CODEPIPELINE"
-    encryption_disabled = true
-  }
+    artifacts {
+        type = "CODEPIPELINE"
+        encryption_disabled = true
+    }
 
-  source {
-    type = "CODEPIPELINE"
-    buildspec = "${data.local_file.buildspec.content}"
-  }
+    source {
+        type = "CODEPIPELINE"
+        buildspec = "${data.local_file.buildspec.content}"
+    }
 }
 
 data "local_file" "buildspec" {
-  filename = "${path.module}/buildspec.yml"
+    filename = "${path.module}/buildspec.yml"
 }
