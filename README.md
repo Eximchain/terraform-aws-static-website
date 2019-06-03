@@ -22,6 +22,8 @@ log_bucket_name     = "eximchain-dev-website-logs" // REQUIRED: Log bucket name
 // ACM Cert
 acm_cert_domain = "eximchain-dev.com" // OPTIONAL: Only required if you want to use a pre-existing ACM cert
 
+acm_cert_arn = "arn:aws:acm:us-east-1:984931625683:certificate/c75c07e9-484c-43f4-a18a-4aa4dee99a91" // OPTIONAL: Allows directly passing certificate ARN
+
 // Website Source
 github_website_repo   = "EximchainWebsite"             // REQUIRED: Repository containing the website source
 github_website_branch = "master"                       // REQUIRED: Branch of website repo to deploy
