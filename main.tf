@@ -25,7 +25,7 @@ locals {
     create_redirect      = "${var.redirect_dns_name != ""}"
     all_aliases          = "${split(",", local.create_redirect ? join(",", list(var.dns_name, var.redirect_dns_name)) : var.dns_name)}"
     alternate_aliases    = "${compact(split(",", local.create_redirect ? var.redirect_dns_name : ""))}"
-    provision_acm_cert   = "${var.acm_cert_domain == ""}"
+    provision_acm_cert   = "${var.acm_cert_domain == "" && var.acm_cert_arn == ""}"
     hyphenated_dns_name  = "${replace(var.dns_name, ".", "-")}"
 }
 
@@ -111,7 +111,7 @@ resource "aws_s3_bucket_policy" "ses_email_permission" {
 # ---------------------------------------------------------------------------------------------------------------------
 # For loading existing cert
 data "aws_acm_certificate" "ssl_certificate" {
-    count = "${local.provision_acm_cert ? 0 : 1}"
+    count = "${var.acm_cert_domain == "" ? 0 : 1}"
 
     domain      = "${var.acm_cert_domain}"
     types       = ["AMAZON_ISSUED"]
@@ -212,7 +212,7 @@ resource "aws_cloudfront_distribution" "website_distribution" {
     }
 
     viewer_certificate {
-        acm_certificate_arn = "${element(coalescelist(data.aws_acm_certificate.ssl_certificate.*.arn, aws_acm_certificate.ssl_certificate.*.arn), 0)}"
+        acm_certificate_arn = "${element(coalescelist(compact(list(var.acm_cert_arn)), data.aws_acm_certificate.ssl_certificate.*.arn, aws_acm_certificate.ssl_certificate.*.arn), 0)}"
         ssl_support_method  = "sni-only"
     }
 
