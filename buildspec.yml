@@ -3,6 +3,13 @@ phases:
   install:
     runtime-versions:
       nodejs: 10
+  %{~ if length(env) != 0 ~}
+  pre_build:
+    commands:
+      %{~ for key,val in env ~}
+      - "echo '${key}=\"${val}\"' >> ${env_file_name}"
+      %{~ endfor ~}
+  %{~ endif ~}
   build:
     commands:
       - "${build_command}"

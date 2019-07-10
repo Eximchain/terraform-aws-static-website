@@ -479,15 +479,13 @@ resource "aws_codebuild_project" "static_website_builder" {
 
   source {
     type      = "CODEPIPELINE"
-    buildspec = data.template_file.buildspec.rendered
-  }
-}
-
-data "template_file" "buildspec" {
-  template = file("${path.module}/buildspec.yml")
-
-  vars = {
-    deployment_directory = var.deployment_directory
-    build_command        = var.build_command
+    buildspec = templatefile("${path.module}/buildspec.yml",
+      {
+        deployment_directory = var.deployment_directory
+        build_command        = var.build_command
+        env_file_name        = var.env_file_name
+        env                  = var.env
+      }
+    )
   }
 }

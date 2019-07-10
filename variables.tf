@@ -77,3 +77,14 @@ variable "build_command" {
   description = "The command to use to build the Website, if you want the pipeline to build it (e.g. 'npm run build').  If not specified, the pipeline will assume the static bundle is already built."
   default     = ":"
 }
+
+variable "env" {
+  description = "Environment variables to be included in a .env file"
+  default     = {}
+  type        = map(string)
+}
+
+variable "env_file_name" {
+  description = "Name of the file that will contain the .env variables"
+  default     = ".env"
+}
