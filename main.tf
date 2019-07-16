@@ -328,6 +328,7 @@ resource "aws_codepipeline" "deploy_pipeline" {
 
     action {
       name            = "Deploy"
+      run_order       = 1
       category        = "Deploy"
       owner           = "AWS"
       provider        = "S3"
@@ -337,6 +338,20 @@ resource "aws_codepipeline" "deploy_pipeline" {
       configuration = {
         BucketName = aws_s3_bucket.website_content.id
         Extract    = "true"
+      }
+    }
+
+    action {
+      name            = "PostDeploy"
+      run_order       = 2
+      category        = "Invoke"
+      owner           = "AWS"
+      provider        = "Lambda"
+      input_artifacts = ["build_output"]
+      version         = "1"
+
+      configuration = {
+        FunctionName   = aws_lambda_function.post_deploy_lambda.function_name
       }
     }
   }
@@ -487,5 +502,164 @@ resource "aws_codebuild_project" "static_website_builder" {
         env                  = var.env
       }
     )
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CODEPIPELINE POST-DEPLOY LAMBDA
+# ---------------------------------------------------------------------------------------------------------------------
+# Wait ensures that the role is fully created when Lambda tries to assume it.
+resource "null_resource" "post_deploy_lambda_wait" {
+  provisioner "local-exec" {
+    command = "sleep 10"
+  }
+  
+  depends_on = [aws_iam_role.post_deploy_lambda_iam]
+}
+
+resource "aws_lambda_function" "post_deploy_lambda" {
+  filename         = "static-website-postdeploy-lambda.zip"
+  function_name    = "static-website-postdeploy-lambda-${local.hyphenated_dns_name}"
+  role             = aws_iam_role.post_deploy_lambda_iam.arn
+  handler          = "index.handler"
+  source_code_hash = filebase64sha256("static-website-postdeploy-lambda.zip")
+  runtime          = "nodejs8.10"
+  timeout          = 10
+
+  environment {
+    variables = {
+      WEBSITE_CONTENT_BUCKET = aws_s3_bucket.website_content.id
+    }
+  }
+
+  depends_on = [null_resource.post_deploy_lambda_wait]
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# POSTDEPLOY LAMBDA IAM
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_iam_role" "post_deploy_lambda_iam" {
+  name = "static-website-postdeploy-lambda-iam-${local.hyphenated_dns_name}"
+
+  assume_role_policy = data.aws_iam_policy_document.post_deploy_lambda_assume_role.json
+}
+
+data "aws_iam_policy_document" "post_deploy_lambda_assume_role" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "1"
+
+    effect = "Allow"
+
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# POSTDEPLOY LAMBDA S3 ACCESS
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_iam_policy" "post_deploy_lambda_allow_s3" {
+  name = "allow-s3-postdeploy-lambda-${local.hyphenated_dns_name}"
+
+  policy = data.aws_iam_policy_document.post_deploy_lambda_allow_s3.json
+}
+
+resource "aws_iam_role_policy_attachment" "post_deploy_lambda_allow_s3" {
+  role       = aws_iam_role.post_deploy_lambda_iam.id
+  policy_arn = aws_iam_policy.post_deploy_lambda_allow_s3.arn
+}
+
+data "aws_iam_policy_document" "post_deploy_lambda_allow_s3" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "1"
+
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:PutBucketWebsite",
+      "s3:GetBucketWebsite",
+      "s3:GetBucketPolicy",
+      "s3:PutBucketPolicy",
+      "s3:PutBucketCORS",
+      "s3:GetBucketAcl",
+      "s3:PutBucketAcl",
+      "s3:GetObjectAcl",
+      "s3:PutObjectAcl",
+      "s3:PutObject",
+      "s3:GetObject",
+    ]
+    resources = [
+      aws_s3_bucket.website_content.arn,
+      "${aws_s3_bucket.website_content.arn}/*",
+    ]
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# POSTDEPLOY LAMBDA CLOUDWATCH ACCESS
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_iam_policy" "post_deploy_lambda_allow_cloudwatch" {
+  name = "allow-cloudwatch-postdeploy-lambda-${local.hyphenated_dns_name}"
+
+  policy = data.aws_iam_policy_document.post_deploy_lambda_allow_cloudwatch.json
+}
+
+resource "aws_iam_role_policy_attachment" "post_deploy_lambda_allow_cloudwatch" {
+  role       = aws_iam_role.post_deploy_lambda_iam.id
+  policy_arn = aws_iam_policy.post_deploy_lambda_allow_cloudwatch.arn
+}
+
+data "aws_iam_policy_document" "post_deploy_lambda_allow_cloudwatch" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "1"
+
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# POSTDEPLOY LAMBDA CODEPIPELINE ACCESS
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_iam_policy" "post_deploy_lambda_allow_codepipeline" {
+  name = "allow-codepipeline-postdeploy-lambda-${local.hyphenated_dns_name}"
+
+  policy = data.aws_iam_policy_document.post_deploy_lambda_allow_codepipeline.json
+}
+
+resource "aws_iam_role_policy_attachment" "post_deploy_lambda_allow_codepipeline" {
+  role       = aws_iam_role.post_deploy_lambda_iam.id
+  policy_arn = aws_iam_policy.post_deploy_lambda_allow_codepipeline.arn
+}
+
+data "aws_iam_policy_document" "post_deploy_lambda_allow_codepipeline" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "1"
+
+    effect = "Allow"
+
+    actions = [
+      "codepipeline:PutJobSuccessResult",
+      "codepipeline:PutJobFailureResult",
+    ]
+    resources = ["*"]
   }
 }
