@@ -539,7 +539,7 @@ resource "aws_lambda_function" "post_deploy_lambda" {
 # POSTDEPLOY LAMBDA IAM
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_iam_role" "post_deploy_lambda_iam" {
-  name = "static-website-postdeploy-lambda-iam-${local.hyphenated_dns_name}"
+  name = "static-postdeploy-${local.hyphenated_dns_name}"
 
   assume_role_policy = data.aws_iam_policy_document.post_deploy_lambda_assume_role.json
 }
