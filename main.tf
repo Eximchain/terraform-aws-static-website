@@ -518,11 +518,11 @@ resource "null_resource" "post_deploy_lambda_wait" {
 }
 
 resource "aws_lambda_function" "post_deploy_lambda" {
-  filename         = "static-website-postdeploy-lambda.zip"
+  filename         = "${path.module}/static-website-postdeploy-lambda.zip"
   function_name    = "static-website-postdeploy-lambda-${local.hyphenated_dns_name}"
   role             = aws_iam_role.post_deploy_lambda_iam.arn
   handler          = "index.handler"
-  source_code_hash = filebase64sha256("static-website-postdeploy-lambda.zip")
+  source_code_hash = filebase64sha256("${path.module}/static-website-postdeploy-lambda.zip")
   runtime          = "nodejs8.10"
   timeout          = 10
 
