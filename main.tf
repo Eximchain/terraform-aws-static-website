@@ -370,7 +370,7 @@ resource "aws_s3_bucket" "deploy_artifacts" {
 # CODEPIPELINE IAM ROLE
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_iam_role" "website_deploy_codepipeline_iam" {
-  name = "static-website-${var.dns_name}"
+  name = "static-website-${local.hyphenated_dns_name}"
 
   assume_role_policy = <<EOF
 {
@@ -400,7 +400,7 @@ EOF
 # CODEPIPELINE IAM ACCESS
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_iam_policy" "codepipeline" {
-  name = "static-website-codepipeline-${var.dns_name}"
+  name = "static-website-codepipeline-${local.hyphenated_dns_name}"
 
   policy = data.aws_iam_policy_document.codepipeline.json
 }
