@@ -9,16 +9,12 @@ phases:
       %{~ for key,val in env ~}
       - "echo '${key}=\"${val}\"' >> ${env_file_name}"
       %{~ endfor ~}
-  %{~ endif ~}
-  build:
-    commands:
-      - "echo 'Working Directory:'"
-      - "pwd"
-      - "echo 'LS current directory:'"
-      - "ls"
       - "echo 'Env File Name: ${env_file_name}'"
       - "echo 'Env File Contents:'"
       - "cat ${env_file_name}"
+  %{~ endif ~}
+  build:
+    commands:
       - "${build_command}"
 artifacts:
   name: BUILD
