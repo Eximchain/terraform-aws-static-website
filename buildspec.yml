@@ -9,9 +9,6 @@ phases:
       %{~ for key,val in env ~}
       - "echo '${key}=\"${val}\"' >> ${env_file_name}"
       %{~ endfor ~}
-      - "echo 'Env File Name: ${env_file_name}'"
-      - "echo 'Env File Contents:'"
-      - "cat ${env_file_name}"
   %{~ endif ~}
   build:
     commands:
