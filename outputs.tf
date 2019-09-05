@@ -18,3 +18,6 @@ output "redirect_dns" {
   value = element(coalescelist(aws_route53_record.redirect.*.fqdn, [""]), 0)
 }
 
+output "pipeline_name" {
+  value = aws_codepipeline.deploy_pipeline.name
+}
