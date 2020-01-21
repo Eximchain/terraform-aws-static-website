@@ -539,7 +539,7 @@ resource "aws_lambda_function" "post_deploy_lambda" {
   role             = aws_iam_role.post_deploy_lambda_iam.arn
   handler          = "index.handler"
   source_code_hash = filebase64sha256("${path.module}/static-website-postdeploy-lambda.zip")
-  runtime          = "nodejs8.10"
+  runtime          = "nodejs12.x"
   timeout          = 10
 
   environment {
